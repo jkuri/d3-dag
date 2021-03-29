@@ -219,6 +219,7 @@ function buildOperator<
         return new LayoutChildLink(last, link.data) as ChildLink<unknown, N>;
       });
     }
+
     return layers;
   }
 
@@ -266,6 +267,7 @@ function buildOperator<
         );
       }
     }
+
     const layers = createLayers(dag as Dag<NodeType & LayeredNode>);
     const nodeSize = cachedNodeSize<NodeType>(options.nodeSize);
 
@@ -274,7 +276,11 @@ function buildOperator<
     for (const layer of layers) {
       const layerHeight = Math.max(...layer.map((n) => nodeSize(n)[1]));
       for (const node of layer) {
-        node.y = height + layerHeight / 2;
+        if (node.data && (node.data as any).pos && (node.data as any).pos.y) {
+          node.y = (node.data as any).pos.y;
+        } else {
+          node.y = height + layerHeight / 2;
+        }
       }
       height += layerHeight;
     }
@@ -315,9 +321,29 @@ function buildOperator<
       height = newHeight;
     }
 
+    for (const layer of layers) {
+      for (const node of layer) {
+        if (node.data && (node.data as any).pos && (node.data as any).pos.x) {
+          node.x = (node.data as any).pos.x;
+        }
+
+        const nodeWidth = nodeSize(node)[0];
+        const nodeHeight = nodeSize(node)[1];
+
+        if (node.x && node.x + nodeWidth / 2 > width) {
+          width = node.x + nodeWidth / 2;
+        }
+
+        if (node.y && node.y + nodeHeight / 2 > height) {
+          height = node.y + nodeHeight / 2;
+        }
+      }
+    }
+
     // Remove dummy nodes and update edge data
     const sugied = dag as Dag<NodeType & SugiyamaNode>;
     removeDummies(sugied);
+
     // laidout dag
     return { dag: sugied, width, height };
   }
